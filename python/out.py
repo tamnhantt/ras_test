@@ -1,48 +1,46 @@
-import sys
-import RPi.GPIO as GPIO 
+from flask import Flask, request, jsonify
+import RPi.GPIO as GPIO
 import time
+
+app = Flask(__name__)
 
 # Cấu hình GPIO
 GPIO.setmode(GPIO.BCM)
-GPIO.setup(18, GPIO.OUT)  # Chọn GPIO 18 làm output
-pwm = GPIO.PWM(18, 1000)  # Tạo tín hiệu PWM tần số 1kHz
+GPIO.setup(18, GPIO.OUT)
+pwm = GPIO.PWM(18, 1000)  # Tạo tín hiệu PWM với tần số 1kHz
 pwm.start(0)
 
-# Hàm chuyển đổi giá trị từ slider thành điện áp (0-3.3V)
 def convert_to_voltage(value):
-    min_slider = 1
-    max_slider = 5
-    min_voltage = 0.0
-    max_voltage = 3.3
-
+    min_slider, max_slider = 1, 5
+    min_voltage, max_voltage = 0.0, 3.3
     voltage = ((value - min_slider) / (max_slider - min_slider)) * (max_voltage - min_voltage) + min_voltage
     return round(voltage, 2)
 
-# Nhận dữ liệu từ stdin để chạy liên tục
-try:
-    print("Listening for data...")
-    while True:
-        line = sys.stdin.readline().strip()
-        if not line:
-            continue
+@app.route('/update_pwm', methods=['POST'])
+def update_pwm():
+    try:
+        data = request.get_json()
+        sensor_name = data.get("sensor_name")
+        value = float(data.get("value"))
 
-        try:
-            sensor_name, value = line.split()
-            value = float(value)
+        voltage = convert_to_voltage(value)
+        duty_cycle = (voltage / 3.3) * 100
+        pwm.ChangeDutyCycle(duty_cycle)
 
-            voltage = convert_to_voltage(value)
-            duty_cycle = (voltage / 3.3) * 100  # Chuyển điện áp thành duty cycle (%)
+        response = {
+            "sensor": sensor_name,
+            "value": value,
+            "voltage": voltage,
+            "status": "success"
+        }
+        return jsonify(response)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
 
-            # Cập nhật PWM theo giá trị mới
-            pwm.ChangeDutyCycle(duty_cycle)
-
-            print(f"Sensor: {sensor_name} - Value: {value} - Voltage: {voltage}V")
-
-        except ValueError:
-            print("Invalid input format. Expected: <sensor_name> <value>")
-        time.sleep(0.1)  # Giảm tải CPU
-
-except KeyboardInterrupt:
-    print("\nStopping...")
-    pwm.stop()
-    GPIO.cleanup()
+if __name__ == '__main__':
+    try:
+        app.run(host='0.0.0.0', port=5000, debug=True)
+    except KeyboardInterrupt:
+        print("Stopping server...")
+        pwm.stop()
+        GPIO.cleanup()
