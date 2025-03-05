@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:process_run/process_run.dart';
 import 'package:process_run/stdio.dart';
 
 class SensorSlider extends StatefulWidget {
@@ -16,7 +15,7 @@ class _SensorSliderState extends State<SensorSlider> {
   Future<void> _sendDataToPython(double value) async {
     try {
       ProcessResult result = await Process.run(
-        'python backend.py ${widget.sensorName} ${value.toString()}',
+        'python3 out.py ${widget.sensorName} ${value.toString()}',
         [],
       );
       print("Python output: ${result.stdout}");
@@ -32,9 +31,9 @@ class _SensorSliderState extends State<SensorSlider> {
         Text("${widget.sensorName}: ${_currentSliderValue.toStringAsFixed(1)}"),
         Slider(
           value: _currentSliderValue,
-          min: 1,
+          min: 0,
           max: 5,
-          divisions: 50,
+          // divisions: 50,
           label: _currentSliderValue.toStringAsFixed(2),
           onChanged: (double value) {
             setState(() {
