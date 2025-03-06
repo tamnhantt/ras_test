@@ -14,6 +14,7 @@ class _SensorSliderState extends State<SensorSlider> {
 
   Future<void> _sendDataToPython(double value) async {
     try {
+      String scriptPath = "python/out.py";
       ProcessResult result = await Process.run(
         'python3',
         [
