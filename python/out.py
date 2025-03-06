@@ -1,12 +1,15 @@
 import sys
-import RPi.GPIO as GPIO 
+import RPi.GPIO as GPIO  # type: ignore
 import time
 
 # Cấu hình GPIO
 GPIO.setmode(GPIO.BCM)
 GPIO.setup(18, GPIO.OUT)  # Chọn GPIO 18 làm output
-pwm = GPIO.PWM(18, 1000)  # Tạo tín hiệu PWM tần số 1kHz
-pwm.start(0)
+GPIO.setup(17, GPIO.OUT)
+pwm18 = GPIO.PWM(18, 1000)  # Tạo tín hiệu PWM tần số 1kHz
+pwm17 = GPIO.PWM(17, 1000)
+pwm18.start(0)
+pwm17.start(0)
 
 # Hàm chuyển đổi giá trị từ slider thành điện áp (0-3.3V)
 def convert_to_voltage(value):
@@ -24,20 +27,38 @@ if __name__ == "__main__":
         sys.exit(1)
 
     sensor_name = sys.argv[1]
-    try:
-        value = float(sys.argv[2])
-        voltage = convert_to_voltage(value)
-        duty_cycle = (voltage / 3.3) * 100  # Chuyển điện áp thành duty cycle (%)
+
+    if sensor_name == "Engine Speed Sensor":
+        try:
+            value = float(sys.argv[2])
+            voltage = convert_to_voltage(value)
+            duty_cycle = (voltage / 3.3) * 100  # Chuyển điện áp thành duty cycle (%)
 
         # Cập nhật PWM theo giá trị mới
-        pwm.ChangeDutyCycle(duty_cycle)
+            pwm18.ChangeDutyCycle(duty_cycle)
         
-        print(f"Sensor: {sensor_name} - Value: {value} - Voltage: {voltage}V")
-    except ValueError:
-        print("Invalid input. Expected a numeric value for <value>.")
+            print(f"Sensor: {sensor_name} - Value: {value} - Voltage: {voltage}V")
+        except ValueError:
+            print("Invalid input. Expected a numeric value for <value>.")
+    
+    time.sleep(0.1)  # Giảm tải CPU
+
+    if sensor_name == "Camshaft Position Sensor":
+        try:
+            value = float(sys.argv[2])
+            voltage = convert_to_voltage(value)
+            duty_cycle = (voltage / 3.3) * 100  # Chuyển điện áp thành duty cycle (%)
+
+        # Cập nhật PWM theo giá trị mới
+            pwm17.ChangeDutyCycle(duty_cycle)
+        
+            print(f"Sensor: {sensor_name} - Value: {value} - Voltage: {voltage}V")
+        except ValueError:
+            print("Invalid input. Expected a numeric value for <value>.")
     
     time.sleep(0.1)  # Giảm tải CPU
     
     # Dừng PWM và giải phóng GPIO
-    pwm.stop()
+    pwm18.stop()
+    pwm17.stop()
     GPIO.cleanup()
