@@ -6,7 +6,7 @@ import time
 GPIO.setmode(GPIO.BCM)
 GPIO.setup(18, GPIO.OUT)  # Chọn GPIO 18 làm output
 GPIO.setup(17, GPIO.OUT)
-pwm18 = GPIO.PWM(18, 1000)  # Tạo tín hiệu PWM tần số 1kHz
+pwm18 = GPIO.PWM(18, 1000)
 pwm17 = GPIO.PWM(17, 1000)
 pwm18.start(0)
 pwm17.start(0)
@@ -41,7 +41,6 @@ if __name__ == "__main__":
         except ValueError:
             print("Invalid input. Expected a numeric value for <value>.")
     
-    time.sleep(0.1)  # Giảm tải CPU
 
     if sensor_name == "Camshaft Position Sensor":
         try:
@@ -61,4 +60,4 @@ if __name__ == "__main__":
     # Dừng PWM và giải phóng GPIO
     pwm18.stop()
     pwm17.stop()
-    GPIO.cleanup()
+

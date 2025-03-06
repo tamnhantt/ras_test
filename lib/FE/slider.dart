@@ -15,10 +15,13 @@ class _SensorSliderState extends State<SensorSlider> {
   Future<void> _sendDataToPython(double value) async {
     try {
       ProcessResult result = await Process.run(
-        'python3 out.py ${widget.sensorName} ${value.toString()}',
-        [],
+        'python3',
+        [
+          'out.py',
+          widget.sensorName,
+          value.toString(),
+        ], // Truyền tham số đúng cách
       );
-      print("Python output: ${result.stdout}");
     } catch (e) {
       print("Error running Python script: $e");
     }
