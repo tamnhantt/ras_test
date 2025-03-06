@@ -14,6 +14,9 @@ class _SensorSliderState extends State<SensorSlider> {
 
   Future<void> _sendDataToPython(double value) async {
     try {
+      String command =
+          'python3 out.py ${widget.sensorName} ${value.toString()}';
+      print("Running command: $command"); // In ra terminal để debug
       ProcessResult result = await Process.run(
         'python3',
         [
