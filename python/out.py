@@ -1,14 +1,19 @@
-import sys
-import RPi.GPIO as GPIO 
+import RPi.GPIO as GPIO
 import time
+from flask import Flask, request, jsonify
+from flask_cors import CORS # type: ignore
+
+# Cấu hình Flask
+app = Flask(__name__)
+CORS(app)
 
 # Cấu hình GPIO
 GPIO.setmode(GPIO.BCM)
 GPIO.setup(18, GPIO.OUT)  # Chọn GPIO 18 làm output
-pwm = GPIO.PWM(18, 1000)  # Tạo tín hiệu PWM tần số 1kHz
-pwm.start(0)
+pwm = GPIO.PWM(18, 1000)  # Tạo tín hiệu PWM với tần số 1kHz
+pwm.start(0)  # Bắt đầu với duty cycle 0%
 
-# Hàm chuyển đổi giá trị từ slider thành điện áp (0-3.3V)
+# Hàm chuyển đổi giá trị slider thành điện áp (0 - 3.3V)
 def convert_to_voltage(value):
     min_slider = 1
     max_slider = 5
@@ -18,31 +23,45 @@ def convert_to_voltage(value):
     voltage = ((value - min_slider) / (max_slider - min_slider)) * (max_voltage - min_voltage) + min_voltage
     return round(voltage, 2)
 
-# Nhận dữ liệu từ stdin để chạy liên tục
-try:
-    print("Listening for data...")
-    while True:
-        line = sys.stdin.readline().strip()
-        if not line:
-            continue
+# API nhận dữ liệu từ Flutter
+@app.route('/receive_data', methods=['POST'])
+def receive_data():
+    try:
+        data = request.json
+        sensor_name = data.get("sensorname")
+        value = float(data.get("value"))
 
-        try:
-            sensor_name, value = line.split()
-            value = float(value)
+        # Chuyển đổi giá trị thành điện áp
+        voltage = convert_to_voltage(value)
+        duty_cycle = (voltage / 3.3) * 100  # Tính duty cycle cho PWM
 
-            voltage = convert_to_voltage(value)
-            duty_cycle = (voltage / 3.3) * 100  # Chuyển điện áp thành duty cycle (%)
+        # Điều chỉnh tín hiệu PWM
+        pwm.ChangeDutyCycle(duty_cycle)
 
-            # Cập nhật PWM theo giá trị mới
-            pwm.ChangeDutyCycle(duty_cycle)
+        print(f"Sensor: {sensor_name} - Value: {value} - Voltage: {voltage}V - Duty Cycle: {duty_cycle}%")
 
-            print(f"Sensor: {sensor_name} - Value: {value} - Voltage: {voltage}V")
+        return jsonify({
+            "status": "success",
+            "message": f"Đã cập nhật tín hiệu PWM từ {sensor_name}",
+            "voltage": voltage,
+            "duty_cycle": duty_cycle
+        }), 200
 
-        except ValueError:
-            print("Invalid input format. Expected: <sensor_name> <value>")
-        time.sleep(0.1)  # Giảm tải CPU
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 400
 
-except KeyboardInterrupt:
-    print("\nStopping...")
+# API dừng chương trình và reset GPIO
+@app.route('/shutdown', methods=['POST'])
+def shutdown():
     pwm.stop()
     GPIO.cleanup()
+    return jsonify({"status": "success", "message": "Hệ thống đã tắt và GPIO được reset"}), 200
+
+# Khởi động server
+if __name__ == '__main__':
+    try:
+        app.run(host='0.0.0.0', port=5000, debug=True)
+    except KeyboardInterrupt:
+        print("\nStopping server...")
+        pwm.stop()
+        GPIO.cleanup()
